@@ -35,4 +35,12 @@ public class ZoneEntity {
 
     private Double lat;
     private Double lng;
+
+    /**
+     * Outline of the zone on the map. A zone can cover several street stretches:
+     * stretches are separated by '|', points by ';', and a point is "lat,lng".
+     * Example: {@code 41.4362,22.6402;41.4380,22.6409|41.4350,22.6440;41.4348,22.6455}
+     */
+    @Column(length = 4000)
+    private String geometry;
 }

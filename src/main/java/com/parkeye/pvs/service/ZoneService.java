@@ -71,6 +71,8 @@ public class ZoneService {
         return new ZoneDto(
                 z.id(), z.zoneCode(), z.address(), z.category(), z.workingHours(),
                 z.hourlyRate(), z.maxDurationHours(), capacity, occupied, capacity - occupied,
-                statusOf(capacity, occupied), z.lat(), z.lng(), distance);
-    }
+                statusOf(capacity, occupied), z.lat(), z.lng(), distance,
+                z.paths().stream()
+                        .map(line -> line.stream().map(p -> new double[]{p.lat(), p.lng()}).toList())
+                        .toList());    }
 }

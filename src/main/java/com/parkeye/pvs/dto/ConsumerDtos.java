@@ -41,9 +41,10 @@ public final class ConsumerDtos {
             ZoneStatus status,
             Double lat,
             Double lng,
-            Integer distanceMeters
-    ) {}
-    // ------------------------------------------------------------- vehicles
+            Integer distanceMeters,
+            /** Street stretches to draw: list of lines, each a list of [lat, lng] pairs. May be empty. */
+            List<List<double[]>> paths
+    ) {}    // ------------------------------------------------------------- vehicles
 
     public record VehicleDto(
             Long id,

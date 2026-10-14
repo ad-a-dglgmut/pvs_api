@@ -19,6 +19,9 @@ import com.parkeye.pvs.model.Vehicle;
 import com.parkeye.pvs.model.ZoneCategory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import com.parkeye.pvs.model.GeoPoint;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -71,6 +74,16 @@ public class LocalDatabaseParkingAdapter implements MunicipalParkingPort {
     }
 
     private ParkingZone toZone(ZoneEntity z, int occupied) {
+        List<List<GeoPoint>> paths = parseGeometry(z.getGeometry());
+        // label/distance position: the stored point, else the middle of the longest drawn stretch
+        Double lat = z.getLat();
+        Double lng = z.getLng();
+        if ((lat == null || lng == null) && !paths.isEmpty()) {
+            List<GeoPoint> longest = paths.stream().max(Comparator.comparingInt(List::size)).orElseThrow();
+            GeoPoint mid = longest.get(longest.size() / 2);
+            lat = mid.lat();
+            lng = mid.lng();
+        }
         return new ParkingZone(
                 z.getId(),
                 z.getZoneCode(),
@@ -81,11 +94,31 @@ public class LocalDatabaseParkingAdapter implements MunicipalParkingPort {
                 z.getMaxDurationHours(),
                 z.getCapacity() != null ? z.getCapacity() : 100,
                 occupied,
-                z.getLat(),
-                z.getLng()
+                lat,
+                lng,
+                paths
         );
     }
-    @Override
+
+    /** "lat,lng;lat,lng|lat,lng;lat,lng" -> stretches of points. Bad or short pieces are skipped, never fatal. */
+    static List<List<GeoPoint>> parseGeometry(String geometry) {
+        List<List<GeoPoint>> result = new ArrayList<>();
+        if (geometry == null || geometry.isBlank()) return result;
+        for (String stretch : geometry.split("\\|")) {
+            List<GeoPoint> points = new ArrayList<>();
+            for (String p : stretch.split(";")) {
+                String[] ll = p.trim().split(",");
+                if (ll.length != 2) continue;
+                try {
+                    points.add(new GeoPoint(Double.parseDouble(ll[0].trim()), Double.parseDouble(ll[1].trim())));
+                } catch (NumberFormatException ignored) {
+                    // skip a malformed point
+                }
+            }
+            if (points.size() >= 2) result.add(List.copyOf(points));
+        }
+        return List.copyOf(result);
+    }    @Override
     public List<Vehicle> fetchAllVehicles() {
         return vehicleRepository.findAll().stream()
                 .map(v -> new Vehicle(

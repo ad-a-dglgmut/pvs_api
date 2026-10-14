@@ -35,8 +35,10 @@ public class ZoneService {
     /** Sorted by distance when the caller shares a location, otherwise by zone code. */
     public List<ZoneDto> list(Double lat, Double lng, ZoneCategory category) {
         boolean hasLocation = lat != null && lng != null;
+        // zones without coordinates have no distance: they go last
         Comparator<ZoneDto> order = hasLocation
-                ? Comparator.comparing(ZoneDto::distanceMeters)
+                ? Comparator.comparing(ZoneDto::distanceMeters, Comparator.nullsLast(Comparator.naturalOrder()))
+                  .thenComparing(ZoneDto::zoneCode)
                 : Comparator.comparing(ZoneDto::zoneCode);
         return port.fetchAllZones().stream()
                 .filter(z -> category == null || z.category() == category)
@@ -55,6 +57,7 @@ public class ZoneService {
     public ZoneDto nearest(double lat, double lng) {
         return list(lat, lng, null).stream()
                 .filter(z -> z.status() != ZoneStatus.FULL)
+                .filter(z -> z.distanceMeters() != null)
                 .findFirst()
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NO_ZONE_AVAILABLE", "No zone has free spots right now."));
     }
@@ -62,12 +65,12 @@ public class ZoneService {
     ZoneDto toDto(ParkingZone z, Double lat, Double lng) {
         int capacity = z.capacity();
         int occupied = Math.min(z.occupied(), capacity);
-        Integer distance = (lat != null && lng != null)
+        Integer distance = (lat != null && lng != null && z.lat() != null && z.lng() != null)
                 ? GeoUtils.distanceMeters(lat, lng, z.lat(), z.lng())
                 : null;
         return new ZoneDto(
-                z.id(), z.zoneCode(), z.name(), z.address(), z.category(), z.workingHours(),
-                z.hourlyRate(), capacity, occupied, capacity - occupied,
+                z.id(), z.zoneCode(), z.address(), z.category(), z.workingHours(),
+                z.hourlyRate(), z.maxDurationHours(), capacity, occupied, capacity - occupied,
                 statusOf(capacity, occupied), z.lat(), z.lng(), distance);
     }
 }

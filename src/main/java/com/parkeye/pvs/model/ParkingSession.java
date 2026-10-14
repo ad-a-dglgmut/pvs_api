@@ -12,7 +12,6 @@ public record ParkingSession(
         Long id,
         String licensePlate,
         String zoneCode,
-        String zoneName,
         Instant startTime,
         Instant endTime,
         BigDecimal cost,

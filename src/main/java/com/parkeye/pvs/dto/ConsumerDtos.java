@@ -22,15 +22,19 @@ public final class ConsumerDtos {
 
     // ---------------------------------------------------------------- zones
 
-    /** distanceMeters is null unless the caller passed lat/lng. */
+    /**
+     * Zones are identified by zoneCode only (there are no official zone names).
+     * address, maxDurationHours, lat and lng can be null; distanceMeters is null unless the caller
+     * passed lat/lng and the zone has coordinates.
+     */
     public record ZoneDto(
             Long id,
             String zoneCode,
-            String name,
             String address,
             ZoneCategory category,
             String workingHours,
             BigDecimal hourlyRate,
+            Integer maxDurationHours,
             int capacity,
             int occupied,
             int freeSpots,
@@ -39,7 +43,6 @@ public final class ConsumerDtos {
             Double lng,
             Integer distanceMeters
     ) {}
-
     // ------------------------------------------------------------- vehicles
 
     public record VehicleDto(
@@ -81,7 +84,6 @@ public final class ConsumerDtos {
             Long ticketId,
             String licensePlate,
             String zoneCode,
-            String zoneName,
             Instant startTime,
             Instant endTime,
             BigDecimal totalCost,
@@ -98,7 +100,6 @@ public final class ConsumerDtos {
             Long ticketId,
             String licensePlate,
             String zoneCode,
-            String zoneName,
             Instant startTime,
             Instant endTime,
             long durationMinutes,
@@ -121,14 +122,13 @@ public final class ConsumerDtos {
             String issuer,
             Instant issuedAt,
             String licensePlate,
-            String zoneName,
+            String zoneCode,
             Instant startTime,
             Instant endTime,
             long durationMinutes,
             PaymentMethod paymentMethod,
             BigDecimal total
     ) {}
-
     // -------------------------------------------------------------- account
 
     public record ProfileDto(

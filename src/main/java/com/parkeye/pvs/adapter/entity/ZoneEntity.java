@@ -18,7 +18,7 @@ public class ZoneEntity {
     @Column(unique = true, nullable = false)
     private String zoneCode;
 
-    private String name;
+    /** Optional free text (e.g. a street hint). Zones are identified by zoneCode only. */
     private String address;
 
     @Enumerated(EnumType.STRING)
@@ -28,6 +28,9 @@ public class ZoneEntity {
     private String workingHours;
 
     private BigDecimal hourlyRate;
+
+    /** Longest single stay in hours; null = no limit (RED zones: 2). */
+    private Integer maxDurationHours;
     private Integer capacity;
 
     private Double lat;

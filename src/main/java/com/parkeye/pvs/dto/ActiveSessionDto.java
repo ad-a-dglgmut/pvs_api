@@ -2,7 +2,7 @@ package com.parkeye.pvs.dto;
 
 public record ActiveSessionDto(
         Long ticketId,
-        String zoneName,
+        String zoneCode,
         String licensePlate,
         String startTime,
         String endTime,

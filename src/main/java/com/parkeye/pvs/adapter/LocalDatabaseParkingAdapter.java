@@ -74,18 +74,17 @@ public class LocalDatabaseParkingAdapter implements MunicipalParkingPort {
         return new ParkingZone(
                 z.getId(),
                 z.getZoneCode(),
-                z.getName(),
-                z.getAddress() != null ? z.getAddress() : "Струмица",
+                z.getAddress(),
                 z.getCategory() != null ? z.getCategory() : ZoneCategory.YELLOW,
-                z.getWorkingHours() != null ? z.getWorkingHours() : "07:00 - 21:00",
+                z.getWorkingHours() != null ? z.getWorkingHours() : "",
                 z.getHourlyRate(),
+                z.getMaxDurationHours(),
                 z.getCapacity() != null ? z.getCapacity() : 100,
                 occupied,
-                z.getLat() != null ? z.getLat() : 41.4378,
-                z.getLng() != null ? z.getLng() : 22.6427
+                z.getLat(),
+                z.getLng()
         );
     }
-
     @Override
     public List<Vehicle> fetchAllVehicles() {
         return vehicleRepository.findAll().stream()
@@ -217,20 +216,19 @@ public class LocalDatabaseParkingAdapter implements MunicipalParkingPort {
         t.setRefunded(BigDecimal.ZERO);
         t.setPaymentMethod(s.paymentMethod());
         t = ticketRepository.save(t);
-        return toSession(t, zoneNames());
+        return toSession(t);
     }
 
     @Override
     public Optional<ParkingSession> findSession(Long sessionId) {
-        return ticketRepository.findById(sessionId).map(t -> toSession(t, zoneNames()));
+        return ticketRepository.findById(sessionId).map(this::toSession);
     }
 
     @Override
     public List<ParkingSession> findSessionsByPlates(Collection<String> licensePlates) {
         if (licensePlates.isEmpty()) return List.of();
         List<String> upper = licensePlates.stream().map(p -> p.trim().toUpperCase()).toList();
-        Map<String, String> names = zoneNames();
-        return ticketRepository.findByPlates(upper).stream().map(t -> toSession(t, names)).toList();
+        return ticketRepository.findByPlates(upper).stream().map(this::toSession).toList();
     }
 
     @Override
@@ -242,22 +240,14 @@ public class LocalDatabaseParkingAdapter implements MunicipalParkingPort {
         t.setCost(cost);
         t.setRefunded(refunded);
         t = ticketRepository.save(t);
-        return toSession(t, zoneNames());
+        return toSession(t);
     }
 
-    private Map<String, String> zoneNames() {
-        Map<String, String> names = new HashMap<>();
-        zoneRepository.findAll().forEach(z -> names.put(z.getZoneCode().toUpperCase(), z.getName()));
-        return names;
-    }
-
-    private ParkingSession toSession(ParkingTicketEntity t, Map<String, String> zoneNames) {
-        String code = t.getZoneCode();
+    private ParkingSession toSession(ParkingTicketEntity t) {
         return new ParkingSession(
                 t.getId(),
                 t.getLicensePlate(),
-                code,
-                zoneNames.getOrDefault(code.toUpperCase(), code),
+                t.getZoneCode(),
                 toInstant(t.getStartTime()),
                 toInstant(t.getEndTime()),
                 t.getCost() != null ? t.getCost() : BigDecimal.ZERO,

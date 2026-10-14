@@ -52,7 +52,7 @@ public class ExpiryNotificationJob {
                     // kind contains the end time, so an extended session can warn again later
                     notifications.createOnce(user.getId(), NotificationType.WARNING,
                             "Паркирање во Струмица",
-                            "Вашата сесија на " + s.zoneName() + " истекува наскоро.",
+                            "Вашата сесија на " + s.zoneCode() + " истекува наскоро.",
                             s.id(), "EXPIRING@" + s.endTime().getEpochSecond());
                 }
             } catch (RuntimeException e) {

@@ -74,6 +74,10 @@ public class ParkingSessionService {
         if (ZoneService.statusOf(zone.capacity(), zone.occupied()) == ZoneStatus.FULL) {
             throw new ApiException(HttpStatus.CONFLICT, "ZONE_FULL", "This zone has no free spots.");
         }
+        if (zone.maxDurationHours() != null && req.hours() > zone.maxDurationHours()) {
+            throw new ApiException(HttpStatus.CONFLICT, "MAX_DURATION_EXCEEDED",
+                    "Zone " + zone.zoneCode() + " allows at most " + zone.maxDurationHours() + " hours.");
+        }
 
         Instant now = clock.instant();
         boolean alreadyParked = port.findSessionsByPlates(List.of(plate)).stream().anyMatch(s -> s.isActiveAt(now));
@@ -102,15 +106,19 @@ public class ParkingSessionService {
         Instant now = clock.instant();
         ParkingSession s = ownedActive(userId, sessionId, now);
 
-        int hours = (req == null || req.hours() == null) ? 1 : req.hours();
-        Instant newEnd = s.endTime().plusSeconds(hours * 3600L);
-        if (Duration.between(s.startTime(), newEnd).getSeconds() > maxSessionHours * 3600L) {
-            throw new ApiException(HttpStatus.CONFLICT, "MAX_DURATION_EXCEEDED",
-                    "A session can last at most " + maxSessionHours + " hours.");
-        }
-
         ParkingZone zone = port.findZone(s.zoneCode())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ZONE_NOT_FOUND", "Zone not found."));
+
+        int hours = (req == null || req.hours() == null) ? 1 : req.hours();
+        Instant newEnd = s.endTime().plusSeconds(hours * 3600L);
+        // the zone's own limit (red zones: 2 h) applies on top of the global cap
+        int limitHours = zone.maxDurationHours() == null
+                ? maxSessionHours
+                : Math.min(maxSessionHours, zone.maxDurationHours());
+        if (Duration.between(s.startTime(), newEnd).getSeconds() > limitHours * 3600L) {
+            throw new ApiException(HttpStatus.CONFLICT, "MAX_DURATION_EXCEEDED",
+                    "A session in zone " + zone.zoneCode() + " can last at most " + limitHours + " hours.");
+        }
         BigDecimal extra = zone.hourlyRate().multiply(BigDecimal.valueOf(hours));
         PaymentMethod method = (req == null || req.paymentMethod() == null)
                 ? s.paymentMethod()
@@ -120,7 +128,7 @@ public class ParkingSessionService {
         ParkingSession updated = port.updateSession(sessionId, newEnd, s.cost().add(extra), s.refunded());
 
         notifications.create(userId, NotificationType.SUCCESS, "Паркирањето е продолжено",
-                "Додадени " + hours + " ч. на " + s.zoneName() + ". Наплатени се " + money(extra)
+                "Додадени " + hours + " ч. на " + s.zoneCode() + ". Наплатени се " + money(extra)
                         + " ден. преку " + payments.describe(userId, method) + ".",
                 sessionId, "EXTENDED");
         return toDto(updated, now);
@@ -152,7 +160,7 @@ public class ParkingSessionService {
             payments.refund(userId, s.paymentMethod(), refund, "stop:" + sessionId);
         }
 
-        String body = "Паркирањето на " + s.zoneName() + " заврши. Наплатено: " + money(finalCost) + " ден."
+        String body = "Паркирањето на " + s.zoneCode() + " заврши. Наплатено: " + money(finalCost) + " ден."
                 + (refund.signum() > 0 ? " Вратени: " + money(refund) + " ден." : "");
         notifications.create(userId, NotificationType.INFO, "Паркирањето е завршено", body, sessionId, "STOPPED");
         return toDto(updated, now);
@@ -181,7 +189,7 @@ public class ParkingSessionService {
         List<HistoryItemDto> items = paid.stream()
                 .filter(s -> !s.isActiveAt(now))
                 .map(s -> new HistoryItemDto(
-                        s.id(), s.licensePlate(), s.zoneCode(), s.zoneName(), s.startTime(), s.endTime(),
+                        s.id(), s.licensePlate(), s.zoneCode(), s.startTime(), s.endTime(),
                         durationMinutes(s), s.cost(), s.refunded(), s.paymentMethod(), s.receiptNo()))
                 .toList();
 
@@ -199,7 +207,7 @@ public class ParkingSessionService {
     @Transactional(readOnly = true)
     public ReceiptDto receipt(long userId, long sessionId) {
         ParkingSession s = owned(userId, sessionId);
-        return new ReceiptDto(s.receiptNo(), issuerName, s.startTime(), s.licensePlate(), s.zoneName(),
+        return new ReceiptDto(s.receiptNo(), issuerName, s.startTime(), s.licensePlate(), s.zoneCode(),
                 s.startTime(), s.endTime(), durationMinutes(s), s.paymentMethod(), s.cost());
     }
 
@@ -233,7 +241,7 @@ public class ParkingSessionService {
     private SessionDto toDto(ParkingSession s, Instant now) {
         long total = Math.max(0, Duration.between(s.startTime(), s.endTime()).getSeconds());
         long remaining = Math.max(0, Duration.between(now, s.endTime()).getSeconds());
-        return new SessionDto(s.id(), s.licensePlate(), s.zoneCode(), s.zoneName(), s.startTime(), s.endTime(),
+        return new SessionDto(s.id(), s.licensePlate(), s.zoneCode(), s.startTime(), s.endTime(),
                 s.cost(), s.paymentMethod(), s.receiptNo(), total, remaining, now);
     }
 

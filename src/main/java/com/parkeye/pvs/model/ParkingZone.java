@@ -9,11 +9,11 @@ import java.math.BigDecimal;
 public record ParkingZone(
         Long id,
         String zoneCode,
-        String name,
-        String address,
+        String address,          // optional free text; null when unknown
         ZoneCategory category,
         String workingHours,
         BigDecimal hourlyRate,
+        Integer maxDurationHours, // null = no limit
         Integer capacity,
         Integer occupied,
         Double lat,

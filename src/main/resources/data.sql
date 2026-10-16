@@ -81,10 +81,10 @@ SELECT 'DM-' || LPAD(CAST(X AS VARCHAR), 4, '0') || '-EE', 'S30', DATEADD('MINUT
 -- ParkEye side (own database): demo driver "Гоце Делчев" = user id 1
 -- ---------------------------------------------------------------------
 INSERT INTO app_users (full_name, email, verified, municipality, language, sms_notifications, wallet_balance, version)
-VALUES ('Гоце Делчев', 'goce.d@strumica.gov.mk', TRUE, 'Општина Струмица', 'Македонски (MK)', TRUE, 380.00, 0);
+VALUES ('Борис Борисов', 'boris.b@strumica.gov.mk', TRUE, 'Општина Струмица', 'Македонски (MK)', TRUE, 380.00, 0);
 
 INSERT INTO user_vehicles (user_id, license_plate, make, model, nickname, default_vehicle)
-VALUES (1, 'SR-1234-AB', 'Volkswagen', 'Golf', 'Мојата Голф', TRUE);
+VALUES (1, 'SR-1234-AB', 'Volkswagen', 'Golf', 'Мој Голф', TRUE);
 INSERT INTO user_vehicles (user_id, license_plate, make, model, nickname, default_vehicle)
 VALUES (1, 'SR-8844-CD', 'Renault', 'Clio', 'Службена', FALSE);
 
